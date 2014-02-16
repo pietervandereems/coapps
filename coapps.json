@@ -1,0 +1,6 @@
+{
+    "name": "login",
+    "version": "0.0.1",
+    "description": "Login using browserid for all apps",
+    "attachments": ["login.html"]
+}
