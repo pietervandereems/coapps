@@ -1,5 +1,6 @@
 {
-  "name": "Coapps, couchdb app uploader",
+  "name": "Coapps",
+  "description": "couchdb app uploader",
   "version": "0.0.1",
   "description": "A package to deploy apps to couchdb",
   "author": "Pieter van der Eems <pieter@eemco.nl>",
