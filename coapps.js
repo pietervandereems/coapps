@@ -56,7 +56,7 @@ fs.readFile("coapps.json", {"encoding": "utf8"}, function (err, data) {
         conn,
         db;
     conn = url.parse(argv.server, true, true);
-    if (conn.auth !== "") {
+    if (conn.auth) {
         auth = conn.auth.split(":");
         options.auth = {
             username: auth[0],
