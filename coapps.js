@@ -43,52 +43,45 @@ argv = require('optimist')
         var queue = [],
             maxAsync = 5,
             doing = [],
-            started = false,
             start,
             upload,
             next;
 
         // When upload is done,
         //  remove it from the doing list
-        //  if there are more files queued and we are not doing maxAsync number of uploads yet
-        //   remove the first item from the queue and put it in doing
-        //   upload the file
+        //  do the next upload
         events.on("uploadDone", function (fname) {
-            var index = doing.indexOf(fname),
-                dindex;
+            var index = doing.indexOf(fname);
             if (index !== -1) {
                 doing.splice(index, 1);
             }
-            if (queue.length > 0 && doing.length < maxAsync) {
-                dindex = doing.push(queue.shift());
-                next(doing[dindex - 1]);
-            }
+            next();
         });
 
-        start = function () {
-            var i;
-            if (started) {
-                return;
-            }
-            started = true;
-            for (i = doing; i < maxAsync; i += 1) {
-                if (queue[i])
-                next()
-            }
-            if (doing < maxAsync) {
-                next()
+        // If there are more files queued and we are not doing maxAsync number of uploads yet
+        //   remove the first item from the queue and put it in doing
+        //   upload the file
+        next = function () {
+            var index;
+            if (queue.length > 0 && doing.length < maxAsync) {
+                index = doing.push(queue.shift());
+                upload(doing[index - 1]);
             }
         };
 
-        upload = function (filename, callback) {
-            var do;
-            if (typeof callback !== "function") {
-                callback = function () {};
+        // start the queue with the first maxAsync uploads (next will test if there are more to do)
+        start = function () {
+            var i;
+            for (i = doing.length; i < maxAsync; i += 1) {
+                next();
             }
+        };
+
+        upload = function (filename) {
+            var do;
             do = function (fname) {
                 // upload code here
                 event.emit("uploadDone", fname);
-                callback(fname);
             }
             if (db) {
                 do(filename);
@@ -100,18 +93,6 @@ argv = require('optimist')
             });
         };
 
-        next = function (filename) {
-            var done = function (res) {
-                events.emit("nextDone", res);
-            };
-            if (doing < 5) {
-                upload(filename, done);
-            } else {
-                events.on("uploadDone", function () {
-                    upload(filename, res);
-                });
-            }
-        };
         return {
             add: function (filename) {
                 queue.push(filename);
