@@ -41,29 +41,62 @@ argv = require('optimist')
     // Location functions
     uploadFile = (function () {
         var queue = [],
-            doing = 0,
+            maxAsync = 5,
+            doing = [],
             started = false,
             start,
             upload,
             next;
 
+        // When upload is done,
+        //  remove it from the doing list
+        //  if there are more files queued and we are not doing maxAsync number of uploads yet
+        //   remove the first item from the queue and put it in doing
+        //   upload the file
+        events.on("uploadDone", function (fname) {
+            var index = doing.indexOf(fname),
+                dindex;
+            if (index !== -1) {
+                doing.splice(index, 1);
+            }
+            if (queue.length > 0 && doing.length < maxAsync) {
+                dindex = doing.push(queue.shift());
+                next(doing[dindex - 1]);
+            }
+        });
+
         start = function () {
+            var i;
             if (started) {
                 return;
             }
             started = true;
+            for (i = doing; i < maxAsync; i += 1) {
+                if (queue[i])
+                next()
+            }
+            if (doing < maxAsync) {
+                next()
+            }
         };
 
-        upload = function (filename) {
-            var do = function (fname) {
-                // upload it
+        upload = function (filename, callback) {
+            var do;
+            if (typeof callback !== "function") {
+                callback = function () {};
+            }
+            do = function (fname) {
+                // upload code here
                 event.emit("uploadDone", fname);
+                callback(fname);
             }
             if (db) {
+                do(filename);
                 return;
             }
             events.once("dbReady", function () {
-                //do something
+                do(filename);
+                return;
             });
         };
 
