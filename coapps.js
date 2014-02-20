@@ -13,6 +13,8 @@ coappsDefault = Object.create({}, {
     attachments: {value: ["index.html"], enumerable: true}
 }); // by default properties ARE NOT writable, enumerable or configurable
 
+events.setMaxListeners(20);
+
 // Set cli options with optimist
 argv = require('optimist')
     .usage('Upload couchapp to server\nUsage: $0')
@@ -34,7 +36,7 @@ argv = require('optimist')
 (function () {
     "use strict";
     var doc,
-        coapss,
+        coapps = {},
         db,
         uploadFile;
 
@@ -78,17 +80,17 @@ argv = require('optimist')
         };
 
         upload = function (filename) {
-            var do;
-            do = function (fname) {
+            var doUpload;
+            doUpload = function (fname) {  // FIXME: add the file upload code here!
                 // upload code here
-                event.emit("uploadDone", fname);
-            }
+                events.emit("uploadDone", fname);
+            };
             if (db) {
-                do(filename);
+                doUpload(filename);
                 return;
             }
             events.once("dbReady", function () {
-                do(filename);
+                doUpload(filename);
                 return;
             });
         };
@@ -104,13 +106,13 @@ argv = require('optimist')
     events.once("coappsRead", function (settings) {
         console.log("Settings read", settings);
         // set defaults
-        coapss.name = settings.name || coappsDefault.name;
-        coapss.description = settings.description || coappsDefault.description;
-        coapss.attachments = settings.attachments || coappsDefault.attachments;
+        coapps.name = settings.name || coappsDefault.name;
+        coapps.description = settings.description || coappsDefault.description;
+        coapps.attachments = settings.attachments || coappsDefault.attachments;
 
         // Read files declared in attachments
         if (Array.isArray(settings.attachments)) {
-            coapss.attachments.forEach(function (attachment) {
+            coapps.attachments.forEach(function (attachment) {
                 console.log("attachment", attachment);
                 uploadFile.add(attachment);
             });
