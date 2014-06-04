@@ -15,20 +15,22 @@ coappsDefault = Object.create({}, {
 
 events.setMaxListeners(20);
 
-// Set cli options with optimist
-argv = require('optimist')
-    .usage('Upload couchapp to server\nUsage: $0')
-    .options("s", {
-        alias: "server",
-        demand: true,
-        describe: "Server to deploy to"
+// Set cli options with nomnom
+argv = require('nomnom')
+    .help('Upload couchapp to server')
+    .options({
+        "server": {
+            abbr: "s",
+            required: true,
+            help: "Server to deploy to"
+        },
+        "database": {
+            abbr: "d",
+            required: true,
+            help: "Database(s) to deploy to, use multiple if needed"
+        }
     })
-    .options("d", {
-        alias: "database",
-        demand: true,
-        describe: "Database(s) to deploy to, use multiple if needed"
-    })
-    .argv;
+    .parse();
 
 
 // ** Main **
