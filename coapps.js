@@ -47,7 +47,7 @@ argv = require('nomnom')
     // Location functions
     uploadFile = (function () {
         var queue = [],
-            maxAsync = 5,
+            maxAsync = 1,
             doing = [],
             start,
             upload,
