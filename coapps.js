@@ -37,7 +37,8 @@ argv = require('nomnom')
 // When possible, start reading files and upload them
 (function () {
     "use strict";
-    var doc,
+    var MMMagic = require('mmmagic').Magic,
+        mmmagic = new MMMagic(MMMagic.MAGIC_MIME_TYPE),
         coapps = {},
         db,
         uploadFile;
@@ -54,11 +55,20 @@ argv = require('nomnom')
         // When upload is done,
         //  remove it from the doing list
         //  do the next upload
-        events.on("uploadDone", function (fname) {
-            var index = doing.indexOf(fname);
+        events.on("uploadDone", function (filename) {
+            var index = doing.indexOf(filename);
             if (index !== -1) {
                 doing.splice(index, 1);
             }
+            console.log("uploadDone", filename);
+            next();
+        });
+        events.on("uploadError", function (error) {
+            var index = doing.indexOf(error.filename);
+            if (index !== -1) {
+                doing.splice(index, 1);
+            }
+            console.error("Error", error);
             next();
         });
 
@@ -84,8 +94,32 @@ argv = require('nomnom')
         upload = function (filename) {
             var doUpload;
             doUpload = function (fname) {  // FIXME: add the file upload code here!
-                // upload code here
-                events.emit("uploadDone", fname);
+                var read,
+                    write,
+                    pipe,
+                    destination = "design/" + coapps.name;
+                mmmagic.detectFile(fname, function (err, mime) {
+                    if (err) {
+                        events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error getting mimetype", error: err});
+                        return;
+                    }
+                    console.log("mime", mime);
+                    read = fs.createReadStream(fname);
+                    write = db.saveAttachment({id: destination}, {name: fname}, function (err) {
+                        if (err) {
+                            events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error saving attachment", error: err});
+                            return;
+                        }
+                        events.emit("uploadDone", fname);
+                    });
+                    read.on("error", function (err) {
+                        events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error reading file", error: err});
+                    });
+                    pipe = read.pipe(write);
+                    pipe.on("error", function (err) {
+                        events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error piping file to database", error: err});
+                    });
+                });
             };
             if (db) {
                 doUpload(filename);
