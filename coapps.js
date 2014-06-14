@@ -37,8 +37,8 @@ argv = require('nomnom')
 // When possible, start reading files and upload them
 (function () {
     "use strict";
-    var MMMagic = require('mmmagic').Magic,
-        mmmagic = new MMMagic(MMMagic.MAGIC_MIME_TYPE),
+    var mmm = require('mmmagic'),
+        mmmagic = new mmm.Magic(mmm.MAGIC_MIME_TYPE),
         coapps = {},
         db,
         uploadFile;
