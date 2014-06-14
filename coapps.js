@@ -1,4 +1,4 @@
-/*jslint couch:true, node:true*/
+/*jslint couch:true, node:true, nomen: true*/
 var fs = require("fs"),  // Libaries
     events = new (require("events").EventEmitter)(),
     argv, // will contain optimist later
@@ -93,32 +93,50 @@ argv = require('nomnom')
 
         upload = function (filename) {
             var doUpload;
-            doUpload = function (fname) {  // FIXME: add the file upload code here!
-                var read,
-                    write,
-                    pipe,
-                    destination = "design/" + coapps.name;
+            doUpload = function (fname) {
+                var save,   // internal function
+                    saveRunning = false,
+                    destination = "design/" + coapps.name,
+                    revision,
+                    mimetype;
+                save = function () {
+                    var read,
+                        write,
+                        pipe;
+                    if (revision && mimetype && !saveRunning) {
+                        saveRunning = true;
+                        read = fs.createReadStream(fname);
+                        write = db.saveAttachment({id: destination, rev: revision}, {name: fname, 'Content-Type': mimetype}, function (err) {
+                            if (err) {
+                                events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error saving attachment", error: err});
+                                return;
+                            }
+                            events.emit("uploadDone", fname);
+                        });
+                        read.on("error", function (err) {
+                            events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error reading file", error: err});
+                        });
+                        pipe = read.pipe(write);
+                        pipe.on("error", function (err) {
+                            events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error piping file to database", error: err});
+                        });
+                    }
+                };
+                db.get(destination, function (err, doc) {
+                    if (err) {
+                        events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error getting document", error: err});
+                        return;
+                    }
+                    revision = doc._rev;
+                    save();
+                });
                 mmmagic.detectFile(fname, function (err, mime) {
                     if (err) {
                         events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error getting mimetype", error: err});
                         return;
                     }
-                    console.log("mime", mime);
-                    read = fs.createReadStream(fname);
-                    write = db.saveAttachment({id: destination}, {name: fname}, function (err) {
-                        if (err) {
-                            events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error saving attachment", error: err});
-                            return;
-                        }
-                        events.emit("uploadDone", fname);
-                    });
-                    read.on("error", function (err) {
-                        events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error reading file", error: err});
-                    });
-                    pipe = read.pipe(write);
-                    pipe.on("error", function (err) {
-                        events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error piping file to database", error: err});
-                    });
+                    mimetype = mime;
+                    save();
                 });
             };
             if (db) {
