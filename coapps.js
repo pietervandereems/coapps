@@ -41,6 +41,7 @@ argv = require('nomnom')
         mmmagic = new mmm.Magic(mmm.MAGIC_MIME_TYPE),
         coapps = {},
         db,
+        revision,
         uploadFile;
 
     // Location functions
@@ -60,7 +61,7 @@ argv = require('nomnom')
             if (index !== -1) {
                 doing.splice(index, 1);
             }
-            console.log("uploadDone", filename);
+            console.log("Uploaded", filename);
             next();
         });
         events.on("uploadError", function (error) {
@@ -94,65 +95,42 @@ argv = require('nomnom')
         upload = function (filename) {
             var doUpload;
             doUpload = function (fname) {
-                var save,   // internal function
-                    saveRunning = false,
-                    destination = "design/" + coapps.name,
-                    revision,
-                    mimetype;
-                save = function () {
-                    var read,
+                mmmagic.detectFile(fname, function (err, mimetype) {
+                    var docHeader = {},
+                        read,
                         write,
-                        pipe,
-                        docHeader = {};
-                    if (revision !== undefined && mimetype && !saveRunning) {
-                        docHeader.id = destination;
-                        if (revision !== "") {
-                            docHeader.rev = revision;
-                        }
-                        saveRunning = true;
-                        read = fs.createReadStream(fname);
-                        write = db.saveAttachment(docHeader, {name: fname, 'Content-Type': mimetype}, function (err) {
-                            if (err) {
-                                events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error saving attachment", error: err});
-                                return;
-                            }
-                            events.emit("uploadDone", fname);
-                        });
-                        read.on("error", function (err) {
-                            events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error reading file", error: err});
-                        });
-                        pipe = read.pipe(write);
-                        pipe.on("error", function (err) {
-                            events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error piping file to database", error: err});
-                        });
-                    }
-                };
-                db.get(destination, function (err, doc) {
+                        pipe;
                     if (err) {
-                        if (err.error && err.error === "not_found") {
-                            doc = {'_rev': ""};
-                        } else {
-                            events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error getting document", error: err});
-                            return;
-                        }
-                    }
-                    revision = doc._rev;
-                    save();
-                });
-                mmmagic.detectFile(fname, function (err, mime) {
-                    if (err) {
-                        events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error getting mimetype", error: err});
+                        events.emit("uploadError", {filename: fname, destination: coapps.destination, database: db.name, message: "Error getting mimetype", error: err});
                         return;
                     }
-                    mimetype = mime;
-                    save();
+                    docHeader.id = coapps.destination;
+                    if (revision !== "") {
+                        docHeader.rev = revision;
+                    }
+                    read = fs.createReadStream(fname);
+                    write = db.saveAttachment(docHeader, {name: fname, 'Content-Type': mimetype}, function (err, result) {
+                        if (err) {
+                            events.emit("uploadError", {filename: fname, destination: coapps.destination, database: db.name, message: "Error saving attachment", error: err});
+                            return;
+                        }
+                        revision = result.rev;
+                        events.emit("uploadDone", fname);
+                    });
+                    read.on("error", function (err) {
+                        events.emit("uploadError", {filename: fname, destination: coapps.destination, database: db.name, message: "Error reading file", error: err});
+                    });
+                    pipe = read.pipe(write);
+                    pipe.on("error", function (err) {
+                        events.emit("uploadError", {filename: fname, destination: coapps.destination, database: db.name, message: "Error piping file to database", error: err});
+                    });
                 });
             };
-            if (db) {
+            if (revision !== undefined) {
                 doUpload(filename);
                 return;
             }
-            events.once("dbReady", function () {
+            events.once("revisionRetrieved", function () {    // If there is no connection yet, what for it to become available.
                 doUpload(filename);
                 return;
             });
@@ -167,16 +145,41 @@ argv = require('nomnom')
     }());
 
     events.once("coappsRead", function (settings) {
+        var getRevision;
+
+        getRevision = function () {
+            db.get(coapps.destination, function (err, doc) {
+                if (err) {
+                    if (err.error && err.error === "not_found") {
+                        doc = {'_rev': ""};
+                    } else {
+                        console.error({destination: coapps.destination, database: db.name, message: "Error getting design document", error: err});
+                        process.exit(1);
+                    }
+                }
+                revision = doc._rev;
+                events.emit("revisionRetrieved", revision);
+            });
+        };
+
         console.log("Settings read", settings);
         // set defaults
         coapps.name = settings.name || coappsDefault.name;
         coapps.description = settings.description || coappsDefault.description;
         coapps.attachments = settings.attachments || coappsDefault.attachments;
+        coapps.destination = "design/" + coapps.name;
+
+        if (!db) {
+            events.once("dbReady", function () {
+                getRevision();
+            });
+        } else {
+            getRevision();
+        }
 
         // Read files declared in attachments
         if (Array.isArray(settings.attachments)) {
             coapps.attachments.forEach(function (attachment) {
-                console.log("attachment", attachment);
                 uploadFile.add(attachment);
             });
         }
