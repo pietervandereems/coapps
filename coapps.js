@@ -150,7 +150,7 @@ argv = require('nomnom')
         getRevision = function () {
             db.get(coapps.destination, function (err, doc) {
                 if (err) {
-                    if (err.error && err.error === "not_found") {
+                    if (err.error && err.reason && err.error === "not_found" && err.reason !== 'no_db_file') {
                         doc = {'_rev': ""};
                     } else {
                         console.error({destination: coapps.destination, database: db.name, message: "Error getting design document", error: err});
