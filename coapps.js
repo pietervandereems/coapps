@@ -102,11 +102,16 @@ argv = require('nomnom')
                 save = function () {
                     var read,
                         write,
-                        pipe;
-                    if (revision && mimetype && !saveRunning) {
+                        pipe,
+                        docHeader = {};
+                    if (revision !== undefined && mimetype && !saveRunning) {
+                        docHeader.id = destination;
+                        if (revision !== "") {
+                            docHeader.rev = revision;
+                        }
                         saveRunning = true;
                         read = fs.createReadStream(fname);
-                        write = db.saveAttachment({id: destination, rev: revision}, {name: fname, 'Content-Type': mimetype}, function (err) {
+                        write = db.saveAttachment(docHeader, {name: fname, 'Content-Type': mimetype}, function (err) {
                             if (err) {
                                 events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error saving attachment", error: err});
                                 return;
@@ -124,8 +129,12 @@ argv = require('nomnom')
                 };
                 db.get(destination, function (err, doc) {
                     if (err) {
-                        events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error getting document", error: err});
-                        return;
+                        if (err.error && err.error === "not_found") {
+                            doc = {'_rev': ""};
+                        } else {
+                            events.emit("uploadError", {filename: fname, destination: destination, database: db.name, message: "Error getting document", error: err});
+                            return;
+                        }
                     }
                     revision = doc._rev;
                     save();
