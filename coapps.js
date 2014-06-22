@@ -167,7 +167,7 @@ argv = require('nomnom')
         coapps.name = settings.name || coappsDefault.name;
         coapps.description = settings.description || coappsDefault.description;
         coapps.attachments = settings.attachments || coappsDefault.attachments;
-        coapps.destination = "design/" + coapps.name;
+        coapps.destination = "_design/" + coapps.name;
 
         if (!db) {
             events.once("dbReady", function () {
