@@ -109,6 +109,7 @@ argv = require('nomnom')
                         docHeader.rev = revision;
                     }
                     read = fs.createReadStream(fname);
+                    console.log("save", fname, db.name);
                     write = db.saveAttachment(docHeader, {name: fname, 'Content-Type': mimetype}, function (err, result) {
                         if (err) {
                             events.emit("uploadError", {filename: fname, destination: coapps.destination, database: db.name, message: "Error saving attachment", error: err});
@@ -224,6 +225,17 @@ fs.readFile("coapps.json", {"encoding": "utf8"}, function (err, data) {
             password: auth[1]
         };
     }
-    db = new (cradle.Connection)(conn.protocol + "//" + conn.hostname, options).database(argv.database);
+    if (!conn.port) {
+        if (conn.protocol === "http:") {
+            conn.port = 80;
+        } else if (conn.protocol === "https:") {
+            conn.port = 443;
+        } else {
+            console.error("Unknown protocol and no port given", conn.protocol);
+            process.exit(2);
+        }
+    }
+    console.log("cradle", conn);
+    db = new (cradle.Connection)(conn.protocol + "//" + conn.hostname, conn.port, options).database(argv.database);
     events.emit("databaseConnected", db);
 }());
