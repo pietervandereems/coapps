@@ -168,6 +168,7 @@ argv = require('nomnom')
         coapps.name = settings.name || coappsDefault.name;
         coapps.description = settings.description || coappsDefault.description;
         coapps.attachments = settings.attachments || coappsDefault.attachments;
+        coapps.dir = settings.dir || [];
         coapps.destination = "_design/" + coapps.name;
 
         if (!db) {
@@ -182,6 +183,20 @@ argv = require('nomnom')
         if (Array.isArray(settings.attachments)) {
             coapps.attachments.forEach(function (attachment) {
                 uploadFile.add(attachment);
+            });
+        }
+
+        if (Array.isArray(settings.dir)) {
+            coapps.dir.forEach(function (dir) {
+                fs.readdir(dir, function (err, files) {
+                    if (err) {
+                        console.error("Error reading dir", dir, err);
+                        return;
+                    }
+                    files.forEach(function (filename) {
+                        uploadFile.add(dir + '/' + filename);
+                    });
+                });
             });
         }
     });
