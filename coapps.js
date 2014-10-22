@@ -104,12 +104,14 @@ argv = require('nomnom')
                         events.emit("uploadError", {filename: fname, destination: coapps.destination, database: db.name, message: "Error getting mimetype", error: err});
                         return;
                     }
+                    if (fname.substr(-4) === '.css') {
+                        mimetype = 'text/css';
+                    }
                     docHeader.id = coapps.destination;
                     if (revision !== "") {
                         docHeader.rev = revision;
                     }
                     read = fs.createReadStream(fname);
-                    console.log("save", fname, db.name);
                     write = db.saveAttachment(docHeader, {name: fname, 'Content-Type': mimetype}, function (err, result) {
                         if (err) {
                             events.emit("uploadError", {filename: fname, destination: coapps.destination, database: db.name, message: "Error saving attachment", error: err});
