@@ -56,12 +56,14 @@ argv = require('nomnom')
         // When upload is done,
         //  remove it from the doing list
         //  do the next upload
-        events.on("uploadDone", function (filename) {
+        events.on("uploadDone", function (filename, doNotNotify) {
             var index = doing.indexOf(filename);
             if (index !== -1) {
                 doing.splice(index, 1);
             }
-            console.log("Uploaded", filename);
+            if (!doNotNotify) {
+                console.log("Uploaded", filename);
+            }
             next();
         });
         events.on("uploadError", function (error) {
@@ -129,6 +131,10 @@ argv = require('nomnom')
                     });
                 });
             };
+            if (filename.substr(-4) === '.swp') { // No need to upload vim .swp files
+                events.emit("uploadDone", filename, true);
+                return;
+            }
             if (revision !== undefined) {
                 doUpload(filename);
                 return;
