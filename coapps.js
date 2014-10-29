@@ -109,6 +109,9 @@ argv = require('nomnom')
                     if (fname.substr(-4) === '.css') {
                         mimetype = 'text/css';
                     }
+                    if (fname.substr(-7) === '.webapp') {
+                        mimetype = 'application/x-web-app-manifest+json';
+                    }
                     docHeader.id = coapps.destination;
                     if (revision !== "") {
                         docHeader.rev = revision;
