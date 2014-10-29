@@ -112,6 +112,9 @@ argv = require('nomnom')
                     if (fname.substr(-7) === '.webapp') {
                         mimetype = 'application/x-web-app-manifest+json';
                     }
+                    if (fname.substr(-9) === '.manifest') {
+                        mimetype = 'text/cache-manifest';
+                    }
                     docHeader.id = coapps.destination;
                     if (revision !== "") {
                         docHeader.rev = revision;
