@@ -49,6 +49,7 @@ argv = require('nomnom')
         var queue = [],
             maxAsync = 1,
             doing = [],
+            detectMime,
             start,
             upload,
             next;
@@ -94,10 +95,30 @@ argv = require('nomnom')
             }
         };
 
+        detectMime = function (fname, callback) {
+            if (fname.substr(-4) === '.css') {
+                callback(null, 'text/css');
+                return;
+            }
+            if (fname.substr(-3) === '.js') {
+                callback(null, 'application/javascript');
+                return;
+            }
+            if (fname.substr(-7) === '.webapp') {
+                callback(null, 'application/x-web-app-manifest+json');
+                return;
+            }
+            if (fname.substr(-9) === '.manifest') {
+                callback(null, 'text/cache-manifest');
+                return;
+            }
+            mmmagic.detectFile(fname, callback);
+        };
+
         upload = function (filename) {
             var doUpload;
             doUpload = function (fname) {
-                mmmagic.detectFile(fname, function (err, mimetype) {
+                detectMime(fname, function (err, mimetype) {
                     var docHeader = {},
                         read,
                         write,
@@ -105,15 +126,6 @@ argv = require('nomnom')
                     if (err) {
                         events.emit("uploadError", {filename: fname, destination: coapps.destination, database: db.name, message: "Error getting mimetype", error: err});
                         return;
-                    }
-                    if (fname.substr(-4) === '.css') {
-                        mimetype = 'text/css';
-                    }
-                    if (fname.substr(-7) === '.webapp') {
-                        mimetype = 'application/x-web-app-manifest+json';
-                    }
-                    if (fname.substr(-9) === '.manifest') {
-                        mimetype = 'text/cache-manifest';
                     }
                     docHeader.id = coapps.destination;
                     if (revision !== "") {
